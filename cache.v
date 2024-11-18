@@ -486,7 +486,7 @@ case(present_state)
 
 	next_mem_req_rw = 1'b0;
 
-	next_mem_req_valid = 1'b1;
+	next_mem_req_valid = !cpu_req_rw_reg;
 
         next_state = cpu_req_rw_reg ? COMPARE_TAG : ALLOCATE;
 
