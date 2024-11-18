@@ -144,7 +144,12 @@ wire [127:0] data_mem_entry;
 
 wire hit;
 
-
+covergroup address_cov @(posedge clk);
+ option.per_instance = 1; // Enable per-instance coverage
+ coverpoint cpu_req_addr {
+          bins range[32] = {[0:$]};
+  }
+  endgroup
 
 //CPU Address = tag + index + block offset + byte offset
 
@@ -181,7 +186,11 @@ $readmemh("data_memory.mem", data_mem);	//load initial values for data memory
 end
 
 
+initial begin
 
+address_cov cov_inst = new();
+
+end
 always @ (posedge clk or negedge rst_n)
 
 begin
@@ -192,7 +201,7 @@ begin
 
 	tag_mem[cpu_addr_index]  <= tag_mem[cpu_addr_index];
 
-	data_mem[cpu_addr_index] <= data_mem[cpu_addr_index];
+data_mem[cpu_addr_index] <= data_mem[cpu_addr_index];
 
 	present_state   	<= IDLE;
 
@@ -318,7 +327,7 @@ case(present_state)
 
     next_cpu_req_rw_reg  = cpu_req_rw;
 
-    next_cache_ready = 1'b0;
+    next_cache_ready = 1'b0;  
 
     next_state = COMPARE_TAG;
 
@@ -330,7 +339,7 @@ case(present_state)
 
   end
 
-
+  
 
   COMPARE_TAG:
 
@@ -350,7 +359,7 @@ case(present_state)
 
     begin
 
-    next_cache_ready = 1'b0;
+    next_cache_ready = 1'b0;  
 
 	  if (!tag_mem_entry[18]) //clean, read new block from memory
 
@@ -392,9 +401,9 @@ case(present_state)
 
 	  begin
 
-          next_cache_ready = 1'b0;
+          next_cache_ready = 1'b0;  
 
-	  next_mem_req_addr = {tag_mem_entry[17:0],cpu_addr_index,4'd0};
+	  next_mem_req_addr = {tag_mem_entry[17:0],cpu_addr_index,4'd0}; 
 
 	  next_mem_req_dataout = data_mem_entry;
 
@@ -426,15 +435,13 @@ case(present_state)
 
   end
 
-
-
   ALLOCATE:
 
   begin
-
+  $display("In ALLOCATE, setting mem_req_valid and cache ready to 0");
   next_mem_req_valid = 1'b0;
 
-  next_cache_ready = 1'b0;
+  next_cache_ready = 1'b0;  
 
 	if(!mem_req_valid && mem_req_ready)	//wait for memory to be ready with read data
 
@@ -462,13 +469,13 @@ case(present_state)
 
   end
 
-
+  
 
   WRITE_BACK:
 
   begin
-
-  next_cache_ready = 1'b0;
+  $display("Cache ready and mem_req_valid is being kept at 0");
+  next_cache_ready = 1'b0;  
 
   next_mem_req_valid = 1'b0;
 
@@ -508,4 +515,17 @@ endcase
 
 end
 
+// Assertion for Cache Read Hit
+property cache_read_hit;
+    @(posedge clk)
+    (cpu_req_valid && !cpu_req_rw && dut.hit) |-> (dut.cache_ready == 1'b1);
+endproperty
+assert property (cache_read_hit)
+    else $display("ERROR: Expected cache ready on read hit.");
+
+
 endmodule
+
+
+
+
